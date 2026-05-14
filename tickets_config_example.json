@@ -1,0 +1,84 @@
+{
+  "tickets": {
+    "bug_report": {
+      "name": "تقرير مشكلة",
+      "emoji": "🐛",
+      "description": "أبلغ عن الأخطاء والمشاكل التي واجهتها",
+      "welcome_message": "شكراً لتبليغك عن هذه المشكلة! سيتم تحليلها بسرعة.",
+      "created_at": "2024-01-15T10:30:00",
+      "created_by": "Admin#1234"
+    },
+    "feature_request": {
+      "name": "طلب ميزة",
+      "emoji": "⭐",
+      "description": "اقترح ميزة جديدة تود رؤيتها",
+      "welcome_message": "نقدّر اقتراحاتك! سنراجعها بعناية.",
+      "created_at": "2024-01-15T10:31:00",
+      "created_by": "Admin#1234"
+    },
+    "general_question": {
+      "name": "سؤال عام",
+      "emoji": "❓",
+      "description": "اسأل عن أي شيء",
+      "welcome_message": "أهلاً! نحن هنا للإجابة على أسئلتك.",
+      "created_at": "2024-01-15T10:32:00",
+      "created_by": "Admin#1234"
+    },
+    "complaint": {
+      "name": "شكوى",
+      "emoji": "😠",
+      "description": "أخبرنا عن أي مشكلة تواجهك",
+      "welcome_message": "آسفين على المشكلة! سنحلها بأسرع وقت.",
+      "created_at": "2024-01-15T10:33:00",
+      "created_by": "Admin#1234"
+    }
+  },
+  "guild_configs": {
+    "123456789": {
+      "support_role": "123456789",
+      "ticket_category": "123456789",
+      "max_open_tickets": 3,
+      "auto_delete_days": 7
+    }
+  },
+  "closed_tickets": [
+    {
+      "channel_name": "🐛-user123-1",
+      "closed_by": "Admin#1234",
+      "closed_at": "2024-01-15T11:30:00",
+      "duration": "1 ساعة",
+      "message_count": 5
+    },
+    {
+      "channel_name": "⭐-user456-1",
+      "closed_by": "Moderator#5678",
+      "closed_at": "2024-01-15T12:15:00",
+      "duration": "45 دقيقة",
+      "message_count": 3
+    }
+  ],
+  "blocked_users": [
+    987654321,
+    987654322
+  ],
+  "feedbacks": [
+    {
+      "user": "user123#1234",
+      "rating": 5,
+      "feedback": "خدمة ممتازة جداً! شكراً للدعم السريع.",
+      "timestamp": "2024-01-15T11:30:00"
+    },
+    {
+      "user": "user456#5678",
+      "rating": 4,
+      "feedback": "جيد ولكن يحتاج تحسن في السرعة",
+      "timestamp": "2024-01-15T12:15:00"
+    },
+    {
+      "user": "user789#9012",
+      "rating": 5,
+      "feedback": "بوت احترافي جداً! أنصح به للجميع.",
+      "timestamp": "2024-01-15T13:00:00"
+    }
+  ]
+}

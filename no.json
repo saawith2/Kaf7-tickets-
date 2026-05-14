@@ -1,0 +1,16 @@
+# Discord Bot Token
+# احصل على التوكن من: https://discord.com/developers/applications
+# ⚠️ حافظ على السرية الكاملة!
+TOKEN=your_bot_token_here_very_very_secret
+
+# Bot Prefix (اختياري)
+# البادئة التي تستخدمها قبل الأوامر (مثال: !help)
+PREFIX=!
+
+# Development Mode (اختياري)
+# ضع True إذا كنت تطور البوت
+DEV_MODE=False
+
+# Database
+# مسار ملف البيانات
+DB_PATH=./tickets_config.json
