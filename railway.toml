@@ -1,0 +1,2 @@
+[deploy]
+startCommand = "python ticket_bot_pro.py"
