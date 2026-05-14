@@ -6,25 +6,13 @@ import os
 from datetime import datetime, timedelta
 from typing import Optional
 from dotenv import load_dotenv
-import logging
-import asyncio
 from collections import defaultdict
+import asyncio
 
 # تحميل متغيرات البيئة
 load_dotenv()
 
-# إعدادات التسجيل المتقدمة
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('ticket_bot.log'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger('🎫 TicketBot ULTIMATE')
-
-# إعدادات البوت
+# إعدادات البوت الأساسية - بدون مشاكل logging
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix=os.getenv('PREFIX', '!'), intents=intents)
 
@@ -37,6 +25,8 @@ STATS_FILE = 'tickets_stats.json'
 spam_tracker = defaultdict(list)
 ticket_creation_times = {}
 
+# ==================== FUNCTIONS ====================
+
 def load_data(file_name):
     """تحميل البيانات من ملف JSON"""
     try:
@@ -44,7 +34,7 @@ def load_data(file_name):
             with open(file_name, 'r', encoding='utf-8') as f:
                 return json.load(f)
     except Exception as e:
-        logger.error(f"خطأ في تحميل {file_name}: {e}")
+        print(f"❌ خطأ في تحميل {file_name}: {e}")
     
     if file_name == DB_FILE:
         return {
@@ -68,10 +58,10 @@ def save_data(file_name, data):
             json.dump(data, f, ensure_ascii=False, indent=2)
         return True
     except Exception as e:
-        logger.error(f"خطأ في حفظ {file_name}: {e}")
+        print(f"❌ خطأ في حفظ {file_name}: {e}")
         return False
 
-async def check_spam(user_id: int, max_per_minute: int = 5) -> bool:
+async def check_spam(user_id: int, max_per_minute: int = 3) -> bool:
     """فحص إذا كان المستخدم يسبب spam"""
     now = datetime.now()
     
@@ -116,14 +106,14 @@ class TicketFeedbackModal(discord.ui.Modal, title="تقييم الخدمة"):
     """نموذج التقييم"""
     
     rating = discord.ui.TextInput(
-        label="التقييم (1-5 نجوم)",
+        label="التقييم (1-5)",
         placeholder="أدخل رقم من 1 إلى 5",
         min_length=1,
         max_length=1
     )
     
     feedback = discord.ui.TextInput(
-        label="ملاحظاتك (اختياري)",
+        label="ملاحظاتك",
         placeholder="أخبرنا عن تجربتك...",
         required=False,
         style=discord.TextStyle.long,
@@ -157,7 +147,7 @@ class TicketFeedbackModal(discord.ui.Modal, title="تقييم الخدمة"):
             )
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
-            logger.info(f"⭐ تقييم جديد: {rating}/5 من {interaction.user}")
+            print(f"⭐ تقييم جديد: {rating}/5 من {interaction.user}")
             
         except ValueError:
             await interaction.response.send_message(
@@ -241,7 +231,7 @@ class TicketSelect(discord.ui.Select):
             
             if not category:
                 category = await guild.create_category(category_name)
-                logger.info(f"✅ فئة جديدة: {category_name}")
+                print(f"✅ فئة جديدة: {category_name}")
             
             ticket_number = len([c for c in category.channels]) + 1
             channel_name = f"{ticket_info['emoji']}-{interaction.user.name[:12]}-{ticket_number}".lower()[:32]
@@ -261,7 +251,7 @@ class TicketSelect(discord.ui.Select):
             )
             await channel.set_permissions(guild.default_role, view_channel=False)
             
-            # رسالة ترحيب مفصلة
+            # رسالة ترحيب
             embed = discord.Embed(
                 title=f"{ticket_info['emoji']} {ticket_info['name']}",
                 description=f"مرحباً {interaction.user.mention}! 👋\n\n" + 
@@ -277,9 +267,9 @@ class TicketSelect(discord.ui.Select):
                 inline=False
             )
             embed.set_thumbnail(url=interaction.user.display_avatar.url)
-            embed.set_footer(text="استخدم الأزرار للتحكم في التذكرة")
+            embed.set_footer(text="استخدم الأزرار للتحكم")
             
-            await channel.send(embed=embed, view=TicketActionView(guild.id, channel.id, interaction.user.id))
+            await channel.send(embed=embed, view=TicketActionView(guild.id, channel.id))
             
             # تسجيل الإجراء
             log_ticket_action(ticket_id, "opened", str(interaction.user), channel.name)
@@ -291,20 +281,19 @@ class TicketSelect(discord.ui.Select):
                 ephemeral=True
             )
             
-            logger.info(f"✅ تذكرة جديدة: {channel_name}")
+            print(f"✅ تذكرة جديدة: {channel_name}")
             
         except discord.Forbidden:
             await interaction.followup.send("❌ ليس لدي أذونات كافية!", ephemeral=True)
         except Exception as e:
-            logger.error(f"خطأ: {e}")
+            print(f"❌ خطأ: {e}")
             await interaction.followup.send(f"❌ خطأ: {str(e)}", ephemeral=True)
 
 class TicketActionView(discord.ui.View):
-    def __init__(self, guild_id: int, channel_id: int, user_id: int):
+    def __init__(self, guild_id: int, channel_id: int):
         super().__init__(timeout=None)
         self.guild_id = guild_id
         self.channel_id = channel_id
-        self.user_id = user_id
     
     @discord.ui.button(label="إغلاق", style=discord.ButtonStyle.red, emoji="🔒", custom_id="close_ticket")
     async def close_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -340,10 +329,10 @@ class TicketActionView(discord.ui.View):
         log_ticket_action(channel.name, "closed", str(interaction.user))
         update_stats("closed", response_time)
         
-        # حذف القناة بعد ثانيتين
+        # حذف القناة
         await asyncio.sleep(2)
         await channel.delete(reason=f"أغلقت من {interaction.user}")
-        logger.info(f"🔒 تم إغلاق: {channel.name} (الوقت: {response_time} دقيقة)")
+        print(f"🔒 تم إغلاق: {channel.name} (الوقت: {response_time} دقيقة)")
     
     @discord.ui.button(label="إعادة فتح", style=discord.ButtonStyle.green, emoji="🔓", custom_id="reopen_ticket")
     async def reopen_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -351,13 +340,11 @@ class TicketActionView(discord.ui.View):
         if channel:
             await interaction.response.defer()
             await channel.set_permissions(interaction.user, send_messages=True)
-            
             embed = discord.Embed(
                 title="🔓 تم إعادة فتح التذكرة",
                 color=discord.Color.green()
             )
             await channel.send(embed=embed)
-            log_ticket_action(channel.name, "reopened", str(interaction.user))
 
     @discord.ui.button(label="حذف", style=discord.ButtonStyle.danger, emoji="🗑️", custom_id="delete_ticket")
     async def delete_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -374,18 +361,14 @@ class TicketActionView(discord.ui.View):
 @app_commands.describe(
     ticket_name="اسم التذكرة",
     emoji="إيموجي",
-    ticket_id="معرف فريد",
-    description="وصف التذكرة",
-    welcome_message="رسالة الترحيب"
+    ticket_id="معرف فريد"
 )
 @app_commands.checks.has_permissions(administrator=True)
 async def add_ticket(
     interaction: discord.Interaction,
     ticket_name: str,
     emoji: str,
-    ticket_id: str,
-    description: Optional[str] = None,
-    welcome_message: Optional[str] = None
+    ticket_id: str
 ):
     config = load_data(DB_FILE)
     
@@ -399,18 +382,14 @@ async def add_ticket(
         return
     
     if len(config['tickets']) >= 100:
-        embed = discord.Embed(
-            title="⚠️ وصلت للحد الأقصى",
-            color=discord.Color.orange()
-        )
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.response.send_message("⚠️ وصلت للحد الأقصى!", ephemeral=True)
         return
     
     config['tickets'][ticket_id] = {
         'name': ticket_name,
         'emoji': emoji,
-        'description': description or 'لا يوجد وصف',
-        'welcome_message': welcome_message or 'شكراً لتواصلك معنا!',
+        'description': 'لا يوجد وصف',
+        'welcome_message': 'شكراً لتواصلك معنا!',
         'created_at': datetime.now().isoformat(),
         'created_by': str(interaction.user)
     }
@@ -425,7 +404,7 @@ async def add_ticket(
     embed.add_field(name="المعرف", value=f"`{ticket_id}`", inline=False)
     
     await interaction.response.send_message(embed=embed, ephemeral=True)
-    logger.info(f"✅ تذكرة جديدة: {ticket_name}")
+    print(f"✅ تذكرة جديدة: {ticket_name}")
 
 @bot.tree.command(name="list_tickets", description="📋 عرض جميع التذاكر")
 async def list_tickets(interaction: discord.Interaction):
@@ -437,20 +416,36 @@ async def list_tickets(interaction: discord.Interaction):
     
     embed = discord.Embed(
         title="📋 قائمة التذاكر",
-        color=discord.Color.blue(),
-        timestamp=datetime.now()
+        color=discord.Color.blue()
     )
     
     for i, (tid, tinfo) in enumerate(config['tickets'].items(), 1):
-        value = f"**المعرف:** `{tid}`\n**الوصف:** {tinfo.get('description', 'N/A')}"
         embed.add_field(
             name=f"{i}. {tinfo['emoji']} {tinfo['name']}",
-            value=value,
+            value=f"**المعرف:** `{tid}`",
             inline=False
         )
     
     embed.set_footer(text=f"المجموع: {len(config['tickets'])} / 100")
     await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="ticket_panel", description="🎫 عرض لوحة التذاكر")
+@app_commands.checks.has_permissions(administrator=True)
+async def ticket_panel(interaction: discord.Interaction):
+    config = load_data(DB_FILE)
+    
+    if not config['tickets']:
+        await interaction.response.send_message("❌ لا توجد تذاكر!", ephemeral=True)
+        return
+    
+    embed = discord.Embed(
+        title="🎫 لوحة التذاكر",
+        description="اختر التذكرة من القائمة 👇",
+        color=discord.Color.blue()
+    )
+    view = discord.ui.View()
+    view.add_item(TicketSelect(config['tickets'], interaction.guild_id))
+    await interaction.response.send_message(embed=embed, view=view)
 
 @bot.tree.command(name="ticket_stats", description="📊 إحصائيات التذاكر")
 async def ticket_stats(interaction: discord.Interaction):
@@ -460,108 +455,51 @@ async def ticket_stats(interaction: discord.Interaction):
     total_closed = len(config.get('closed_tickets', []))
     closed_rate = (total_closed / stats['total_opened'] * 100) if stats['total_opened'] > 0 else 0
     
-    # حساب متوسط وقت الرد
-    response_times = stats.get('response_times', [])
-    avg_response_time = sum(response_times) / len(response_times) if response_times else 0
-    
     embed = discord.Embed(
         title="📊 إحصائيات التذاكر",
-        color=discord.Color.gold(),
-        timestamp=datetime.now()
+        color=discord.Color.gold()
     )
     
     embed.add_field(name="📂 المفتوحة", value=str(stats['total_opened']), inline=True)
     embed.add_field(name="✅ المغلقة", value=str(total_closed), inline=True)
-    embed.add_field(name="📈 نسبة الإغلاق", value=f"{closed_rate:.1f}%", inline=True)
-    embed.add_field(name="⏱️ متوسط وقت الرد", value=f"{avg_response_time:.0f} دقيقة", inline=True)
+    embed.add_field(name="📈 النسبة", value=f"{closed_rate:.1f}%", inline=True)
     
     if config.get('feedbacks'):
         ratings = [f['rating'] for f in config['feedbacks']]
         avg_rating = sum(ratings) / len(ratings)
-        embed.add_field(name="⭐ متوسط التقييم", value=f"{avg_rating:.1f}/5", inline=True)
+        embed.add_field(name="⭐ التقييم", value=f"{avg_rating:.1f}/5", inline=True)
     
-    embed.set_footer(text="آخر تحديث")
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
-@bot.tree.command(name="ticket_panel", description="🎫 عرض لوحة التذاكر")
-@app_commands.describe(panel_type="dropdown أو buttons")
-@app_commands.checks.has_permissions(administrator=True)
-async def ticket_panel(interaction: discord.Interaction, panel_type: str = "dropdown"):
-    config = load_data(DB_FILE)
-    
-    if not config['tickets']:
-        await interaction.response.send_message("❌ لا توجد تذاكر!", ephemeral=True)
-        return
-    
-    ptype = panel_type.lower().strip()
-    
-    if ptype == "dropdown":
-        embed = discord.Embed(
-            title="🎫 لوحة التذاكر",
-            description="اختر التذكرة من القائمة 👇",
-            color=discord.Color.blue()
-        )
-        view = discord.ui.View()
-        view.add_item(TicketSelect(config['tickets'], interaction.guild_id))
-        await interaction.response.send_message(embed=embed, view=view)
-    else:
-        await interaction.response.send_message("❌ استخدم: dropdown", ephemeral=True)
-
-# ==================== BACKGROUND TASKS ====================
-
-@tasks.loop(hours=24)
-async def daily_stats_report():
-    """تقرير يومي عن الأداء"""
-    stats = load_data(STATS_FILE)
-    config = load_data(DB_FILE)
-    
-    total_closed = len(config.get('closed_tickets', []))
-    report = f"""
-    📊 تقرير يومي - {datetime.now().strftime('%d/%m/%Y')}
-    
-    ✅ تذاكر مفتوحة: {stats['total_opened']}
-    ✅ تذاكر مغلقة: {total_closed}
-    ⭐ متوسط التقييم: {sum([f['rating'] for f in config.get('feedbacks', [])]) / len(config.get('feedbacks', [])) if config.get('feedbacks') else 0:.1f}
-    """
-    
-    logger.info(report)
-
-@tasks.loop(minutes=30)
-async def cleanup_memory():
-    """تنظيف الذاكرة"""
-    import gc
-    gc.collect()
-    logger.info("🧹 تم تنظيف الذاكرة")
+# ==================== BOT EVENTS ====================
 
 @bot.event
 async def on_ready():
-    logger.info("╔═══════════════════════════════════════════╗")
-    logger.info("║  ✅ البوت الخنفشاري ULTIMATE جاهز! 🚀    ║")
-    logger.info(f"║  👤 البوت: {bot.user}           ║")
-    logger.info(f"║  📊 السيرفرات: {len(bot.guilds)}                     ║")
-    logger.info("╚═══════════════════════════════════════════╝")
+    print("╔════════════════════════════════════════╗")
+    print("║  ✅ البوت جاهز للعمل! 🚀             ║")
+    print(f"║  👤 البوت: {bot.user}          ║")
+    print(f"║  📊 السيرفرات: {len(bot.guilds)}                   ║")
+    print("╚════════════════════════════════════════╝")
     
     try:
         synced = await bot.tree.sync()
-        logger.info(f"✅ تم مزامنة {len(synced)} أوامر 🎯")
-        
-        # بدء المهام الدورية
-        daily_stats_report.start()
-        cleanup_memory.start()
-        
+        print(f"✅ تم مزامنة {len(synced)} أوامر")
     except Exception as e:
-        logger.error(f"❌ خطأ في المزامنة: {e}")
+        print(f"❌ خطأ: {e}")
 
-# تشغيل البوت
+# ==================== RUN BOT ====================
+
 TOKEN = os.getenv('TOKEN')
 
 if not TOKEN:
-    logger.error("❌ لم يتم العثور على TOKEN!")
+    print("❌ لم يتم العثور على TOKEN في .env")
+    print("أضف: TOKEN=your_token_here")
     exit(1)
 
 try:
+    print("🚀 جاري تشغيل البوت...")
     bot.run(TOKEN)
 except KeyboardInterrupt:
-    logger.info("❌ تم إيقاف البوت")
+    print("❌ تم إيقاف البوت")
 except Exception as e:
-    logger.error(f"❌ خطأ: {e}")
+    print(f"❌ خطأ: {e}")
